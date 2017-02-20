@@ -370,6 +370,8 @@ class GravityWaveEvent():
 
             gal_indexes = []
 
+            tiles_to_send = []
+
             for tile in tile_cands:
 
                 selection_criteria = self.selection_criteria(
@@ -410,7 +412,7 @@ class GravityWaveEvent():
 
             self.catalog['uncovered'][galaxy_indexes] = False
 
-    def alert_in_time(self, tile, time):
+    def alert_in_time(self, tiles, time):
 
         tile['start_time'] = '{}'.format(tile['start_time'])
         t = Timer(time, self.alerter.send_alert, args=(
