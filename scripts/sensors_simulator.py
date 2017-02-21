@@ -48,7 +48,7 @@ class SensorSimulator(object):
                         "camera_box": record["data"]["camera_box"],
                         "computer_box": record["data"]["computer_box"],
                     }
-                } },
+                }},
                 True
             )
 

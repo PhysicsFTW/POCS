@@ -60,18 +60,42 @@ def test_invalid_login(mail):
 
 def test_get_email(mail):
 
-    read, email = mail.get_email('LVC_TEST')
+    unread = mail.mark_as_unread('Archive')
+
+    assert unread
+
+    read, email, exit = mail.get_email('Archive', mark_as_read=False)
 
     assert read
+    assert exit
 
 
-def test_mark_as_seen():
-    pass
+def test_does_not_read_read_email():
+
+    mail = ParseEmail('imap.gmail.com', 'email.parser.test.acc@gmail.com', 'apassword', move_to_archive=True)
+
+    unread = mail.mark_as_unread('Archive')
+
+    assert unread
+
+    read, email, exit = mail.get_email('Archive', mark_as_read=True)
+
+    assert read
+    assert not exit
+
+    read, email, exit = mail.get_email('Archive', mark_as_read=True)
+
+    assert not read
+    assert not exit
 
 
 def test_supernova_email(supernov_email):
 
-    read, email = supernov_email.get_email('Supernova')
+    unread = supernov_email.mark_as_unread('Supernova')
+
+    assert unread
+
+    read, email, exit = supernov_email.get_email('Supernova')
 
     message = supernov_email.read_email(email)
 
@@ -84,7 +108,11 @@ def test_supernova_email(supernov_email):
 
 def test_grb_email(grb_email):
 
-    read, email = grb_email.get_email('GRB')
+    unread = grb_email.mark_as_unread('GRB')
+
+    assert unread
+
+    read, email, exit = grb_email.get_email('GRB')
 
     message = grb_email.read_email(email)
 
@@ -108,7 +136,11 @@ def test_grav_wave_email(configname):
         selection_criteria=selection_criteria,
         test_message=True)
 
-    read, email = grav_mail.get_email('LVC_TEST')
+    unread = grav_mail.mark_as_unread('LVC_TEST')
+
+    assert unread
+
+    read, email, exit = grav_mail.get_email('LVC_TEST')
     message = grav_mail.read_email(email)
 
     assert len(message) > 0

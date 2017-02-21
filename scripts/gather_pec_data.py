@@ -86,7 +86,15 @@ def make_pec_data(image_dir, observer=None, with_fit=True, parallel=False, verbo
     data_table.write(hdf5_fn, path=hdf5_path, append=True, serialize_meta=True, overwrite=True)
 
 
-def main(project=None, unit=None, folders_file=None, parallel=False, remote=False, remove_after=False, verbose=False, **kwargs):
+def main(
+        project=None,
+        unit=None,
+        folders_file=None,
+        parallel=False,
+        remote=False,
+        remove_after=False,
+        verbose=False,
+        **kwargs):
 
     pan = Panoptes(simulator=['all'])
 

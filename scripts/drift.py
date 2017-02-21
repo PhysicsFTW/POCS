@@ -22,8 +22,7 @@ from panoptes.utils.images import *
 dir1 = '/var/panoptes/images/20160113/*.cr2'
 
 
-cr2_files = glob.glob(dir1)
-cr2_files.sort()
+cr2_files = sorted(glob.glob(dir1))
 cr2_files
 
 

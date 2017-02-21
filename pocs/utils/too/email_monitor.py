@@ -29,7 +29,6 @@ parser.add_argument('--selection_criteria', default=None, dest='selection_criter
                     help='The python dictionary containint our selection criteria')
 parser.add_argument('--verbose', default=False, dest='verbose',
                     help='Activates print statements.')
-parser.add_argument('--archive', default=True, dest='archive', help='Tells the parsers to archive mail they read.')
 
 
 def read_email_in_monitor(email_monitor, types_noticed):
@@ -41,22 +40,21 @@ def read_email_in_monitor(email_monitor, types_noticed):
         - types_notices (list of strings): the subjects which the monitor will attempt to read.
 
     Returns:
-        - the list of targets as python dictionaries.
-        - exit_after (bool): command to either keep looping or exit the monitor.'''
+        - the list of targets as python dictionaries.'''
 
     targets = []
     print('For monitor: ', str(email_monitor))
     for email_type in types_noticed:
         print('Reading email: ', email_type)
-        read, text, exit_after = email_monitor.get_email(email_type)
+        read, text = email_monitor.get_email(email_type)
 
         if read:
             targets = email_monitor.parse_event(text)
 
-    return targets, exit_after
+    return targets
 
 
-def create_monitors(config_file, host, email, password, alert_pocs, selection_criteria, test, verbose, archive):
+def create_monitors(config_file, host, email, password, alert_pocs, selection_criteria, test, verbose):
     '''Creates a list of eail email_monitor by reading the relevant config file.
 
     Args:
@@ -69,8 +67,6 @@ def create_monitors(config_file, host, email, password, alert_pocs, selection_cr
         - selection_criteria (python dictionary): used for gravity wave email parser.
         - test (bool): enables the reading of test event emails.
         - verbose (bool): enables printing statements in all methods.
-        - archive (bool): if True, the parsers try to archive mail they read. If they fail,
-            or if False, the monitor will exit.
 
     Returns:
         - list of Email parser objects. Raises error if any parser cannot be created.'''
@@ -91,8 +87,7 @@ def create_monitors(config_file, host, email, password, alert_pocs, selection_cr
                 configname=config_file,
                 selection_criteria=selection_criteria,
                 test_message=test,
-                verbose=verbose,
-                move_to_archive=archive)
+                verbose=verbose)
             parser_list.append([parser, parser_info['subjects']])
 
         except Exception as e:
@@ -114,18 +109,15 @@ if __name__ == '__main__':
         args.alert_pocs,
         args.selection_criteria,
         args.test,
-        args.verbose
-        args.archive)
+        args.verbose)
 
-    exit after = False
-
-    while not exit_after:
+    while True:
 
         try:
 
             for email_monitor in email_monitors:
 
-                targets, exit_after = read_email_in_monitor(email_monitor[0], email_monitor[1])
+                targets = read_email_in_monitor(email_monitor[0], email_monitor[1])
 
             time.sleep(args.rescan * 60)
 
