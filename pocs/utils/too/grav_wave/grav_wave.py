@@ -149,7 +149,10 @@ class GravityWaveEvent(object):
             self.event_data = download_file(fits_file, cache=True)
 
         except Exception as e:
-            self.created_event = False
+            
+            self.event_data = fits_file # assumes fits file is a local file. FIX
+            
+            self.created_event = True # assumes local file again. FIX
             if self.verbose:
                 warn('Could not download probability map! Will not create event.')
 
