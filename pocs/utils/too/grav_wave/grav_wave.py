@@ -147,7 +147,7 @@ class GravityWaveEvent(object):
                     warn('Could not process login request for LIGO Collaboration.')
 
             self.event_data = download_file(fits_file, cache=True)
-            
+
         except Exception as e:
             self.created_event = False
             if self.verbose:
