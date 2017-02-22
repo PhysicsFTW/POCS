@@ -37,7 +37,7 @@ def read_email_in_monitor(email_monitor, types_noticed):
     email with those subjects.
 
     Args:
-        - monitor (EmailParser Object): the email monitor attempting to read emails.
+        - monitor (EmailParser): the email monitor attempting to read emails.
         - types_notices (list of strings): the subjects which the monitor will attempt to read.
 
     Returns:
@@ -66,7 +66,7 @@ def create_monitors(config_file, host, email, password, alert_pocs, selection_cr
         - password (str): email password
         - alert_pocs (bool): tells the parser whether or not
             to send an alert with the targets.
-        - selection_criteria (python dictionary): used for gravity wave email parser.
+        - selection_criteria (dictionary): used for gravity wave email parser.
         - test (bool): enables the reading of test event emails.
         - verbose (bool): enables printing statements in all methods.
         - archive (bool): if True, the parsers try to archive mail they read. If they fail,

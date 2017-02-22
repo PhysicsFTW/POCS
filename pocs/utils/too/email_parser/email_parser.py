@@ -19,7 +19,7 @@ class ParseEmail(object):
 
     '''Creates email parser classes.
 
-    Creates email parser for Gravity Wave events, Supernoave and Gamma Ray Bursts.
+    Creates email parser for Gravity Wave events, Supernovae and Gamma Ray Bursts.
     They look for emails, read them and create a dictionary with their parameters to which is
     used to create new targets for observation.
 
@@ -32,16 +32,11 @@ class ParseEmail(object):
         - imap_user (str): the email address name.
         - imap_pass (str): the email password.
         - test_message (bool): enables the reading of test messages.
-        - checked_targets (python list): list of final targets in the parser.
+        - checked_targets (list): list of final targets in the parser.
         - mail (IMAP4_SSL Object): email object accessed by given hostname,
             email and password.
         - alert_pocs (bool): Tells the Alerter class whether or not to send checked_targets.
-
-    TODO:
-        - create check such that already read emails do not get read again. mark_as_read
-            was supposed to do this, but it is not working for whatever reason.
-        - Make Supernova and GRB emails parsers specific to a source for these triggers.
-            Decide where these triggers will come from.'''
+    '''
 
     def __init__(
             self,
@@ -223,15 +218,15 @@ class ParseEmail(object):
 class GravWaveParseEmail(ParseEmail):
 
     def __init__(self, *args, **kwargs):
-        '''EmailParser object which handles the gravity wave specific emails.
+        '''`EmailParser` object which handles the gravity wave specific emails.
 
         Attribs:
-            - selection_criteria (python dict): example: {'name': (srt), 'max_tiles': (float)}, determines
+            - selection_criteria (dictionary): example: {'name': (srt), 'max_tiles': (float)}, determines
                 when tiling is complete. If not provided, is read from config_grav.
-            - observer (astroplan Observer Object): an observer with the location specified in the
+            - observer (astroplan Observer): an observer with the location specified in the
                 location config, unless observer ofjevt is given in the init.
             - altitude (float): the minimum altitude above the horizon where above which we want to be observing.
-            - fov (python dict): of format {'ra': (float), 'dec': (float)}, info about the size of the field
+            - fov (dictionary): of format {'ra': (float), 'dec': (float)}, info about the size of the field
                 of view of the telescope. If not given, is read from config_grav'''
 
         super().__init__(*args, **kwargs)
@@ -247,7 +242,7 @@ class GravWaveParseEmail(ParseEmail):
         Args:
             - text (str): body of email
         Returns:
-            - message (python dictionary).'''
+            - message (dictionary).'''
 
         text.replace('\r', '')  # get rid of formatting markers in the string
         split_msg = text.split('\n')  # split message at each line
@@ -266,8 +261,8 @@ class GravWaveParseEmail(ParseEmail):
     def parse_event(self, text):
         '''Interprets Gravity Wave email and creates list of targets.
 
-        After read_email returns the python dictionary, this method craetes all the parameters
-        to pass to GravityWaveEvent, which then handles the target creation.
+        After `read_email` returns the python dictionary, this method craetes all the parameters
+        to pass to `GravityWaveEvent`, which then handles the target creation.
 
         Args:
             - text (str): the body of the email to be parsed.
@@ -340,7 +335,9 @@ class GravWaveParseEmail(ParseEmail):
                                          altitude=self.altitude,
                                          observer=self.observer)
 
-            targets = grav_wave.tile_sky()
+            if grav_wave.created_event:
+                targets = grav_wave.tile_sky()
+
         self.checked_targets = targets
         return targets
 
@@ -348,7 +345,7 @@ class GravWaveParseEmail(ParseEmail):
 class SupernovaParseEmail(ParseEmail):
 
     def __init__(self, *args, **kwargs):
-        '''Email Parser object which handles the Supernoave specific emails.'''
+        '''`Email Parser` object which handles the Supernovae specific emails.'''
 
         super().__init__(*args, **kwargs)
 
@@ -356,9 +353,9 @@ class SupernovaParseEmail(ParseEmail):
         '''Creates the target as a python dctionary.
 
         Args:
-            - message (python dictionary): contains all event attributes.
+            - message (dictionary): contains all event attributes.
         Returns:
-            - target as a python dictionary'''
+            - target as a dictionary'''
 
         name = message['NAME']
         coords = SkyCoord(float(message['RA']), float(message['DEC']), frame=message['FRAME'], unit=message['UNIT'])
@@ -378,7 +375,7 @@ class SupernovaParseEmail(ParseEmail):
         Args:
             - text (str): body of email
         Returns:
-            - message (python dictionary).'''
+            - message (dictionary).'''
 
         text.replace('\r', '')  # get rid of formatting markers in the string
         split_msg = text.split('\n')  # split message at each line
@@ -397,7 +394,7 @@ class SupernovaParseEmail(ParseEmail):
     def parse_event(self, text):
         '''Interprets Supernova email and creates list of targets.
 
-        After read_email returns the python dictionary, this method craetes the target list.
+        After `read_email` returns the python dictionary, this method craetes the target list.
 
         Args:
             - text (str): the body of the email to be parsed.
@@ -426,7 +423,7 @@ class SupernovaParseEmail(ParseEmail):
 class GRBParseEmail(ParseEmail):
 
     def __init__(self, *args, **kwargs):
-        '''EmailParser object which handles the gamma ray burst specific emails.'''
+        '''`EmailParser` object which handles the gamma ray burst specific emails.'''
 
         super().__init__(*args, **kwargs)
 
@@ -434,7 +431,7 @@ class GRBParseEmail(ParseEmail):
         '''Creates the target as a python dctionary.
 
         Args:
-            - message (python dictionary): contains all event attributes.
+            - message (dictionary): contains all event attributes.
         Returns:
             - target as a python dictionary'''
 
@@ -456,7 +453,7 @@ class GRBParseEmail(ParseEmail):
         Args:
             - text (str): body of email
         Returns:
-            - message (python dictionary).'''
+            - message (dictionary).'''
 
         text.replace('\r', '')  # get rid of formatting markers in the string
         split_msg = text.split('\n')  # split message at each line
@@ -475,7 +472,7 @@ class GRBParseEmail(ParseEmail):
     def parse_event(self, text):
         '''Interprets GRB email and creates list of targets.
 
-        After read_email returns the python dictionary, this method craetes the target list.
+        After `read_email` returns the python dictionary, this method craetes the target list.
 
         Args:
             - text (str): the body of the email to be parsed.

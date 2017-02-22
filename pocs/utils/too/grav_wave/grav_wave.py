@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import io
 import os
+import requests
 
 from scipy.stats import norm
 from astroquery.vizier import Vizier
@@ -44,40 +45,39 @@ class GravityWaveEvent(object):
         region of the probability map, but also attempt to cover the most galaxies.
 
         Attribs:
-            - config_loc (python dict): the config cointaining information about the observer's location.
-            - config_grav (python dict): the config cointaining info about the grav wave handler,
+            - config_loc (dictionary): the config cointaining information about the observer's location.
+            - config_grav (dictionary): the config cointaining info about the grav wave handler,
                 including the field of view (fov) and the selection_criteria.
-            - time (astropy.time.Time Object): start time of the event. Now, if input in None.
-            - observer (astroplan Observer Object): an observer with the location specified in the
+            - time (astropy.time.Time): start time of the event. Now, if input in None.
+            - observer (astroplan.Observer): an observer with the location specified in the
                 location config, unless observer ofjevt is given in the init.
             - altitude (float): the minimum altitude above the horizon where above which we want to be observing.
-            - horizon (Horizon object): has functions calculating the visible sky range from the observer.
-            - fov (python dict): of format {'ra': (float), 'dec': (float)}, info about the size of the field
+            - horizon (Horizon): has functions calculating the visible sky range from the observer.
+            - fov (dictionary): of format {'ra': (float), 'dec': (float)}, info about the size of the field
                 of view of the telescope. If not given, is read from config_grav
-            - selection_criteria (python dict): example: {'name': (srt), 'max_tiles': (float)}, determines
+            - selection_criteria (dictionary): example: {'name': (srt), 'max_tiles': (float)}, determines
                 when tiling is complete. If not provided, is read from config_grav.
             - alert_pocs (bool): tells the code whether or not to send alert of the targets.
-            - catalog (astropy table): is downloaded from Vizier. If name not provided, it loads the 2MASS Survey.
+            - catalog (astropy.table): is downloaded from Vizier. If name not provided, it loads the 2MASS Survey.
             - event_data (healpix map): probability map of the event downloaded from the fits_file.
-            - key (python dict): key for getting RA and DEC values out of catalog.
+            - key (dictionary): key for getting RA and DEC values out of catalog.
                 Example: {'ra': (str), 'dec': (str)}.
             - frame (str): frame of coordinates in catalog.
             - unit (str): unit of coordiantes in catalog (deg, rad, ...)
             - dist_cut (float): the maximum distance to which we want to observe galaxies from catalog.
                 Default is 50.0.
-            - evt_attribs (python dict): contains the attributes of the event in the trigger. Only one used is
+            - evt_attribs (dictionary): contains the attributes of the event in the trigger. Only one used is
                 TRIGGER_NUM which tags the targets with the vent identifier.
             - tile_types (str): see define_tiles docstring for more details.
-            - alerter (Alerter Object): used to send targets.
+            - alerter (Alerter): used to send targets.
             - percentile (float): the percentile in which we want to select candidate galaxies from.
-
-        TODO:
-            - complete write_to_file method which should save all the galaxies in the tile to a
-                file with the tile's name.Currently does not work due to python byte encoding issues.
-            - make it so that the proability map downloader can log into the relevant account.'''
+            - created_event (bool): False if there are exceptions raised downloading the catalog or probability map.
+        '''
 
         self.config_loc = load_config('pocs')
         self.verbose = kwargs.get('verbose', False)
+
+        self.created_event = True
 
         self.config_grav = load_config(configname)
 
@@ -130,8 +130,29 @@ class GravityWaveEvent(object):
             self.alert_pocs = alert_pocs
 
         Vizier.ROW_LIMIT = -1
-        self.catalog, = Vizier.get_catalogs(galaxy_catalog)
-        self.event_data = download_file(fits_file, cache=True)
+        try:
+            self.catalog, = Vizier.get_catalogs(galaxy_catalog)
+        except Exception as e:
+            self.created_event = False
+            if self.verbose:
+                warn('Could not get catalog! Will not create event.')
+
+        try:
+            try:
+                user = config_grav['inputs']['ligo_accname']
+                password = config_grav['inputs']['ligo_password']
+                requests.get(fits_file, auth=(user, password))
+            except Exception as e:
+                if self.verbose:
+                    warn('Could not process login request for LIGO Collaboration.')
+
+            self.event_data = download_file(fits_file, cache=True)
+            
+        except Exception as e:
+            self.created_event = False
+            if self.verbose:
+                warn('Could not download probability map! Will not create event.')
+
         self.key = key
         self.frame = frame
         self.unit = unit
@@ -274,12 +295,12 @@ class GravityWaveEvent(object):
         '''Gets properties of time by counting all galaxies that fit in that tile.
 
         Args:
-            - cord (python dictionary): the skeleton tile defined in define_tiles.
-            - time (astropy.time.Time Object): start time of event.
+            - cord (dictionary): the skeleton tile defined in define_tiles.
+            - time (astropy.time.Time): start time of event.
             - cands (astropy.table): all the candidates left after selection on map and loaction.
             - prob (list): the probability list corresponding to the lst of galaxies in the catalog.
         Returns:
-            - tile (python dict): tile with information about the contained galaxies,
+            - tile (dictionary): tile with information about the contained galaxies,
                 and properties relevant to observation.'''
 
         tile = {}
@@ -327,11 +348,11 @@ class GravityWaveEvent(object):
         Args:
             - galaxies (astropy table): all galaxies contained in tile.
             - prob (list): probability list corresponding to galaxies in catalog
-            - tile (python dict): the tile we're appending score and info about galaxies to.
-            - cord (python dict): the prototile, used here to get the title of the tile['text'].
+            - tile (dictionary): the tile we're appending score and info about galaxies to.
+            - cord (dictionary): the prototile, used here to get the title of the tile['text'].
 
         Returns:
-            - score to append.'''
+            - score to append (float).'''
 
         score = 0.0
         tile['text'] = "Galaxies in tile " + cord['name'] + ':\n'
@@ -404,13 +425,13 @@ class GravityWaveEvent(object):
            sets their properties and sets their exposure time, score, priority.
 
         Args:
-            - time (astropy.time.Time Object): time where each tile starts to be visible.
+            - time (astropy.time.Time): time where each tile starts to be visible.
             - cands (astropy table): candidates that were selected.
             - prob (list): list of probabilities corresponding to each galaxy.
 
         Returns:
-            - tile_cands (list of python dicts): list of all tiles around candidates in cands.
-            - max_score (python dict): contains positions and scores of all tiles
+            - tile_cands (list of dictionaries): list of all tiles around candidates in cands.
+            - max_score (dictionary): contains positions and scores of all tiles
                 - used for descriminating between candidates.'''
 
         tile_cands = []
@@ -445,8 +466,8 @@ class GravityWaveEvent(object):
         '''Cheks that the tile isn't in a reagion already selected in this loop.
 
         Args:
-            - coords (python dict): the coordinates of the current tile.
-            - covered_coords (list of dict): all covered coordinates.
+            - coords (dictionary): the coordinates of the current tile.
+            - covered_coords (list of dictionaries): all covered coordinates.
 
         Returns:
             - isnt_in (bool): True if the tile isn't in a region already observed. False if it is.'''
@@ -478,15 +499,12 @@ class GravityWaveEvent(object):
 
         Args:
             - cands (astropy table): all candidates that passed selection.
-            - tile_cands (list of dict): all tile candidates.
-            - max_score (python dict): the second returned value in get_tile_cands
+            - tile_cands (list of ddictionaries): all tile candidates.
+            - max_score (dictionary): the second returned value in `get_tile_cands`
             - tiles (list): the list to which we append selected tiles.
-            - time (astropy.time.Time Object): time at which tile_cands become observable
-            - sun_rise_time (astropy.time.Time Object): sun rise time from current observer
-
-        TODO:
-            - after sending the alert, we want to save the text in tile['text'] to file,
-                which is what self.write_to_file is eventually supposed to do.'''
+            - time (astropy.time.Time): time at which tile_cands become observable
+            - sun_rise_time (astropy.time.Time): sun rise time from current observer
+        '''
 
         if len(tile_cands) > 0:
             max_scores = np.array(max_score['score'])
@@ -562,7 +580,7 @@ class GravityWaveEvent(object):
         Alerter sends the message only at the start time of each tile.
 
         Args:
-            - tiles (list of python dict): targets to be sent
+            - tiles (list of dictionaries): targets to be sent
             - time (float): time in seconds that we need to wait until sending the alert.'''
 
         for tile in tiles:
@@ -574,7 +592,7 @@ class GravityWaveEvent(object):
         '''Calculates time delay between now and start time of each tile.
 
         Args:
-            start_time (astropy.time.Time Object): start time of tile.
+            start_time (astropy.time.Time): start time of tile.
         Returns:
             del_t (float): time in seconds which we need to wait until sending the alert.
             0.0 if current_time > start_time'''
@@ -591,9 +609,8 @@ class GravityWaveEvent(object):
         '''Creates txt file containing all galaxies in each tile.
 
         Args:
-            - tile (python dict): tile whose galaxy contents we're printing
-        TODO:
-            - make this method work - there's an issue with byte encoding or something...'''
+            - tile (dictionary): tile whose galaxy contents we're printing
+        '''
 
         with io.FileIO(str(tile['properties']['name']).replace(' ', '') + ".txt", "w") as f:
             f.write(tile['text'].decode('utf-8'))
@@ -601,18 +618,18 @@ class GravityWaveEvent(object):
     def selection_criteria(self, tiles, cands, time, sun_rise_time, num_loop=0):
         '''Checks if we've met selection criteria.
 
-        The selection criteria is a python dict with a 'name' and 'max_tiles' keys.
+        The selection criteria is a dict with a 'name' and 'max_tiles' keys.
         If the name is 'observable_tonight', it will ignore max_tiles and will only
-        return True (criteria met) if current time > sun_rise_time.
+        return True (criteria met) if current time > sun rise time.
         If the name is 'one_loop', it will only do one main selection loop and return
         any number of tiles found within it.
         Otherwise, it will loop until we have the number of tiles specified in 'max_tiles'.
 
         Args:
-            - tiles (list of dict): all tiles tagged for observation thus far.
+            - tiles (list of dictionaries): all tiles tagged for observation thus far.
             - cands (astrpy table): the current list of candidates after selection.
-            - time (astrpy.time.Time Object): the start time of most recent tile(s).
-            - sun_rise_time (astropy.time.Time Object): time of sun rise.
+            - time (astrpy.time.Time): the start time of most recent tile(s).
+            - sun_rise_time (astropy.time.Time): time of sun rise.
             - num_loop (int): the number of main loops. Only used when checking
                 selection criteria in the main loop.
         Returns:
@@ -697,10 +714,10 @@ class GravityWaveEvent(object):
         Args:
             - cands (astropy.table): catalog that has been selected on with the probability
                 map and distance cut.
-            - time (astropy.time.Time Object): start time of event.
+            - time (astropy.time.Time): start time of event.
         Returns:
             - loop_cands (astropy.table): the firt non-empty subcatalog.
-            - time (astropy.time.Time Object): time at which the first non-empty subcatalog
+            - time (astropy.time.Time): time at which the first non-empty subcatalog
                 is visible from the observer in Horizon.'''
 
         zenith = self.horizon.zenith_ra_dec(time=time)
@@ -737,7 +754,7 @@ class GravityWaveEvent(object):
         be time of pervious loop start + 11.0 minutes.
 
         Returns:
-            - tiles (list of dict): final targets, as per selection criteria.'''
+            - tiles (list of dictionaries): final targets, as per selection criteria.'''
 
         dp_dV, z, r = self.get_prob_red_dist(self.catalog, self.event_data)
 
