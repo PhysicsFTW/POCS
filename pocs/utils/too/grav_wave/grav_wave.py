@@ -150,6 +150,7 @@ class GravityWaveEvent(object):
             self.event_data = download_file(fits_file, cache=True)
 
         except Exception as e:
+
             if self.verbose:
                 warn('Could not download fits file. Attempting to access local copy')
             try:
