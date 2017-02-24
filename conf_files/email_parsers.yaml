@@ -10,6 +10,8 @@ email_parsers:
             ra: 3.0
             dec: 2.0
         alert_pocs: True
+        ligo_accname: NAME
+        ligo_password: PASSWORD
     subjects:
         -
             CSV/LVC_INITIAL

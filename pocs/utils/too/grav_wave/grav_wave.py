@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 import io
 import os
 import requests
+from warnings import warn
 
 from scipy.stats import norm
 from astroquery.vizier import Vizier
@@ -149,9 +150,17 @@ class GravityWaveEvent(object):
             self.event_data = download_file(fits_file, cache=True)
 
         except Exception as e:
-            self.created_event = False
             if self.verbose:
-                warn('Could not download probability map! Will not create event.')
+                warn('Could not download fits file. Attempting to access local copy')
+            try:
+                self.event_data = fits_file
+                prob = hp.read_map(self.event_data)
+
+            except Exception as e:
+                self.created_event = False
+
+                if self.verbose:
+                    warn('Could not find local copy either! Will not create event.')
 
         self.key = key
         self.frame = frame
@@ -564,7 +573,7 @@ class GravityWaveEvent(object):
 
             if self.alert_pocs:
 
-                delta_t = self.delta_t(tiles_to_send[-1]['properties']['start_time'])
+                delta_t = self.delta_t(tiles_to_send[-1]['start_time'])
 
                 if self.verbose:
                     print("Sent tiles: {} {} seconds".format(delta_t, tiles_to_send))
@@ -665,8 +674,7 @@ class GravityWaveEvent(object):
             - z (list): the redshift corresponding to each galaxy in catalog
             - r (list): distances in Mpc corresponding to each galaxy in catalog.'''
 
-        prob, distmu, distsigma, distnorm = hp.read_map(
-            event_data, field=range(4))
+        prob = hp.read_map(event_data)
 
         npix = len(prob)
         nside = hp.npix2nside(npix)
@@ -679,8 +687,7 @@ class GravityWaveEvent(object):
         z = self.get_redshift(catalog)
         r = self.get_dist_in_Mpc(z)
 
-        dp_dV = prob[ipix] * distnorm[ipix] * \
-            norm(distmu[ipix], distsigma[ipix]).pdf(r) / pixarea
+        dp_dV = prob[ipix]
 
         return dp_dV, z, r
 
